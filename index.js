@@ -4,6 +4,7 @@ const dbConnect = require("./config/dbConnect");
 const authRouter = require("./routes/authRoute");
 const bodyParser = require("body-parser");
 const { notFound, errorHandler } = require("./middlewares/errorHandler");
+
 const app = express();
 
 
