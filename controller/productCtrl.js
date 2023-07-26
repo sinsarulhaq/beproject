@@ -55,14 +55,52 @@ const getaProduct = asyncHandler(async (req, res) => {
         throw new Error(err);
     }
 });
+
 const getAllProduct = asyncHandler(async (req, res) => {
+    // 1 way) const getAllProducts = await Product.find(req.query)
+        // 2 way const getAllProducts = await Product.find({
+        //     brand : req.query.brand,
+        //     cateogory : req.query.cateogory
+        // });
     try {
-        const getAllProducts = await Product.find();
-        res.json(getAllProducts)
+        //Filtering
+        const queryObject = {...req.query};
+
+        const excludeFields = ['page', 'sort', 'limit', 'fields'];
+
+        excludeFields.forEach((el) => delete queryObject[el]);
+        
+        let queryStrng = JSON.stringify(queryObject);
+
+        queryStrng = queryStrng.replace(/\b(gte|gt|lte|lt)\b/g, (match) => `$${match}`);
+        
+        let query = Product.find(JSON.parse(queryStrng));
+
+        //Sorting
+        if(req.query.sort){
+            const sortBy = req.query.sort.split(',').join(' ')
+            query = query.sort(sortBy)
+        }else{
+            query = query.sort('-createdAt')
+        }
+
+        // limiting the fields
+        if(req.query.fields){
+           const fields = req.query.fields.split(',').join(' ');
+           query = query.select(fields)
+        }else{
+            query = query.select('-__v');
+        }
+
+        //Pagination
+        //3:31:34
+        const product = await query
+        res.json(product);
+
     } catch (error) {
         throw new Error(error);
     }
-})
+});
 
 module.exports = { createProducts, getaProduct, getAllProduct, updateProduct, deleteProduct }
 
