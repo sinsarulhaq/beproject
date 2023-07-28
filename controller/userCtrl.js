@@ -4,6 +4,7 @@ const asyncHandler = require("express-async-handler");
 const validateMongoDbId = require("../utils/validateMongodbId");
 const { generateRefreshToken } = require("../config/refreshToken");
 const jwt = require("jsonwebtoken");
+const sendEmail = require("./emailCtrl");
 
 //create a user
 const createUser = asyncHandler( async (req, res) => {
@@ -12,6 +13,7 @@ const createUser = asyncHandler( async (req, res) => {
     if(!findUser){
         // create a new user
         const newUser = await User.create(req.body);
+        console.log(req.body)
         res.json(newUser);
     }else{
         //user already exists
@@ -178,5 +180,48 @@ const unblockUser = asyncHandler(async (req, res) => {
     }
 });
 
+  const updatePassword = asyncHandler(async (req, res) => {
+    const { _id } = req.user;
+    const { password } = req.body;
+    validateMongoDbId(_id);
+    const user = await User.findById(_id);
+  
+    if (password) {
+      user.password = password;
+  
+      // Set the passwordChangedAt field to the current date and time
+      user.passwordChangedAt = new Date();
+      await user.createPasswordResetToken();
+      user.passwordResetExpires = Date.now() + 30 * 60 * 1000; // 30 minutes
+  
+      const updatedPassword = await user.save();
+      res.json(updatedPassword);
+    } else {
+      res.json(user);
+    }
+  });
+  
+  const forgotPasswordToken = asyncHandler(async (req, res) => {
+    const {email} = req.body;
+    const user = await User.findOne({email});
+    if(!user) throw new Error('user not found with this email');
 
-module.exports = { createUser, loginUserCtrl, getallUser, getaUser,  deleteaUser, updateaUSer, blockUser, unblockUser, handleRefreshToken, logout };
+    try {
+        const token = await user.createPasswordResetToken();
+        await User.save();
+        const resetUrl = `Hi, please follow this link to reset your password. This make valid till 10 min from now <a href=''http://localhost5000/api/user/reset-password/${token}:>click here</a>`
+        const data = {
+            to: email,
+            text: 'Hey User',
+            subject: "Forgot password Link",
+            htm: resetUrl
+        }
+        sendEmail(data);
+        res.json(token);
+    } catch (error) {
+        throw new Error(error);
+    }
+  })
+
+
+module.exports = { createUser, loginUserCtrl, getallUser, getaUser,  deleteaUser, updateaUSer, blockUser, unblockUser, handleRefreshToken, logout, updatePassword, forgotPasswordToken };
