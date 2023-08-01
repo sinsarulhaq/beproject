@@ -67,7 +67,7 @@ userSchema.pre("save", async function (next) {
       .createHash("sha256")
       .update(resettoken)
       .digest("hex");
-    // this.passwordResetExpires = Date.now() + 30 * 60 * 1000; // 10 minutes
+     this.passwordResetExpires = Date.now() + 30 * 60 * 1000; // 10 minutes
     return resettoken;
   };
 

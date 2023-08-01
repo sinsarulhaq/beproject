@@ -5,6 +5,7 @@ const validateMongoDbId = require("../utils/validateMongodbId");
 const { generateRefreshToken } = require("../config/refreshToken");
 const jwt = require("jsonwebtoken");
 const sendEmail = require("./emailCtrl");
+const crypto = require("crypto");
 
 //create a user
 const createUser = asyncHandler( async (req, res) => {
@@ -208,20 +209,37 @@ const unblockUser = asyncHandler(async (req, res) => {
 
     try {
         const token = await user.createPasswordResetToken();
-        await User.save();
-        const resetUrl = `Hi, please follow this link to reset your password. This make valid till 10 min from now <a href=''http://localhost5000/api/user/reset-password/${token}:>click here</a>`
+        await user.save();
+        const resetURL = `Hi, Please follow this link to reset Your Password. This link is valid till 10 minutes from now. <a href='http://localhost:5000/api/user/reset-password/${token}'>Click Here</>`;
+
         const data = {
             to: email,
             text: 'Hey User',
             subject: "Forgot password Link",
-            htm: resetUrl
+            html: resetURL
         }
         sendEmail(data);
         res.json(token);
     } catch (error) {
         throw new Error(error);
     }
-  })
+  });
+
+  const resetPassword = asyncHandler(async (req, res) => {
+    const { password } = req.body;
+    const { token } = req.params;
+    const hashedToken = crypto.createHash("sha256").update(token).digest("hex");
+    const user = await User.findOne({
+      passwordResetToken: hashedToken,
+      passwordResetExpires: { $gt: Date.now() },
+    });
+    if (!user) throw new Error(" Token Expired, Please try again later");
+    user.password = password;
+    user.passwordResetToken = undefined;
+    user.passwordResetExpires = undefined;
+    await user.save();
+    res.json(user);
+  });
 
 
-module.exports = { createUser, loginUserCtrl, getallUser, getaUser,  deleteaUser, updateaUSer, blockUser, unblockUser, handleRefreshToken, logout, updatePassword, forgotPasswordToken };
+module.exports = { createUser, loginUserCtrl, getallUser, getaUser,  deleteaUser, updateaUSer, blockUser, unblockUser, handleRefreshToken, logout, updatePassword, forgotPasswordToken, resetPassword };
