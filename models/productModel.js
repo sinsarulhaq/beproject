@@ -1,6 +1,4 @@
-const mongoose = require("mongoose"); // Erase if already required
-
-//!mdbgum (for short cut)
+const mongoose = require("mongoose"); //!mdbgum (for short cut)
 
 // Declare the Schema of the Mongo model
 var productSchema = new mongoose.Schema({
