@@ -141,7 +141,7 @@ const addTowhishlist = asyncHandler(async (req, res) => {
 
 const rating = asyncHandler(async(req, res) => {
     const {_id} = req.user;
-    const {star, prodId} = req.body;
+    const {star, prodId, comment} = req.body;
     try {
         const product = await Product.findById(prodId);
         let alreadyRated = product.ratings.find((userId) => userId.postedby.toString() === _id.toString());
@@ -151,7 +151,7 @@ const rating = asyncHandler(async(req, res) => {
                     ratings: {$elemMatch: alreadyRated}
                 },
                 {
-                    $set: {"ratings.$.star": star}
+                    $set: {"ratings.$.star": star, "ratings.$.comment": comment}
                 },
                 {
                     new:true
@@ -163,26 +163,28 @@ const rating = asyncHandler(async(req, res) => {
                 $push: {
                     ratings:{
                         star: star,
+                        comment: comment,
                         postedby: _id,
                     }
                 }
             }, {new: true});
-            res.json(rateProduct);
-
-        }
+            }
+            const getAllRating = await Product.findById(prodId);
+            let totalRating = getAllRating.ratings.length;
+            let ratingSum = getAllRating.ratings.map((item) => item.star).reduce((prev, curr) => prev + curr, 0);
+            let actualRating = Math.round(ratingSum / totalRating);
+           let finalproduct =  await  Product.findByIdAndUpdate(
+            prodId,
+             {
+                totalrating : actualRating
+            }, 
+            {new:true}
+            );
+            res.json(finalproduct);
         
     } catch (error) {
         throw new Error(error);
     }
 });
-//6:01:14(go for postman)
+
 module.exports = { createProducts, getaProduct, getAllProduct, updateProduct, deleteProduct, addTowhishlist, rating }
-
-
-// const a = asyncHandler(async (req, res) => {
-//     try {
-        
-//     } catch (error) {
-        
-//     }
-// });
