@@ -2,6 +2,7 @@ const { generateToken } = require("../config/jwtToken");
 const User = require("../models/userModel");
 const Product = require("../models/productModel");
 const Coupon = require("../models/couponModel");
+const Order = require("../models/orderModel");
 const Cart = require("../models/cartModel");
 const asyncHandler = require("express-async-handler");
 const validateMongoDbId = require("../utils/validateMongodbId");
@@ -9,7 +10,7 @@ const { generateRefreshToken } = require("../config/refreshToken");
 const jwt = require("jsonwebtoken");
 const sendEmail = require("./emailCtrl");
 const crypto = require("crypto");
-const { log } = require("console");
+const uniqid = require("uniqid");
 
 //create a user
 const createUser = asyncHandler( async (req, res) => {
@@ -377,4 +378,57 @@ const applyCoupon = asyncHandler(async(req, res) => {
     res.json(totalAfterDiscount);
 });
 
-module.exports = { createUser, loginUserCtrl, getallUser, getaUser,  deleteaUser, updateaUSer, blockUser, unblockUser, handleRefreshToken, logout, updatePassword, forgotPasswordToken, resetPassword, loginAdminCtrl, getWishlist, saveAddress, userCart, getUserCart, emptyCart, applyCoupon };
+const createOrder = asyncHandler(async(req, res) => {
+    const { _id } = req.user;
+    validateMongoDbId(_id);
+    const {COD, couponApplied} = req.body;
+    try {
+        if(!COD) throw new Error('Create cash order failed');
+        const user = await User.findById(_id);
+        let userCart = await Cart.findOne({orderby: user._id});
+        let finalAmount = 0;
+        if(couponApplied && userCart.totalAfterDiscount){
+            finalAmount = userCart.totalAfterDiscount;
+        }else{
+            finalAmount = userCart.cartTotal;
+        }
+        let newOrder = await Order.create({
+            products: userCart.products,
+            paymentIntent : {
+                id: uniqid(),
+                method: 'COD',
+                amount:finalAmount,
+                status: "Cash on Delivery",
+                created: Date.now(),
+                currency: "USD"
+            },
+            orderby: user._id,
+            orderStatus: "Cash on Delivery"
+        });
+        let update = userCart.products.map((item) => {
+            return {
+                updateOne:{
+                    filter:{ _id: item.product._id},
+                    update: {$inc: {quantity: -item.count , sold: +item.count}}
+                }
+            }
+        });
+        const updated = await Product.bulkWrite(update, {}) //can't use findByIdAndUpdate instead of bulWrite -> because its can't update multiple documents in a single data base call (bcoz the update is with in a map)
+        res.json({message: 'success'});
+    } catch (error) {
+        throw new Error(error);
+    }
+});
+
+const getOrders = asyncHandler(async(req, res) => {
+    const { _id } = req.user;
+    validateMongoDbId(_id);
+    try {
+        const userOrders = await Order.findOne({orderby: _id});
+        res.json(userOrders);
+    } catch (error) {
+        throw new Error(error);
+    }
+});
+//8:38
+module.exports = { createUser, loginUserCtrl, getallUser, getaUser,  deleteaUser, updateaUSer, blockUser, unblockUser, handleRefreshToken, logout, updatePassword, forgotPasswordToken, resetPassword, loginAdminCtrl, getWishlist, saveAddress, userCart, getUserCart, emptyCart, applyCoupon, createOrder, getOrders };
