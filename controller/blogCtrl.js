@@ -159,5 +159,5 @@ const uploadImages = asyncHandler(async(req, res) => {
         throw new Error(error);
     }
 });
-//7:06
+
 module.exports = { createBlog, updateBlog, getBlog, getAllBlog, deleteBlog, likeBlog, dislikeBlog, uploadImages };

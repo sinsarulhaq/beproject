@@ -1,6 +1,7 @@
 const { generateToken } = require("../config/jwtToken");
 const User = require("../models/userModel");
 const Product = require("../models/productModel");
+const Coupon = require("../models/couponModel");
 const Cart = require("../models/cartModel");
 const asyncHandler = require("express-async-handler");
 const validateMongoDbId = require("../utils/validateMongodbId");
@@ -342,11 +343,38 @@ const getUserCart = asyncHandler(async (req, res) => {
     const { _id } = req.user;
     validateMongoDbId(_id);
     try {
-        const cart = await Cart.findOne({orderby: _id });
+        const cart = await Cart.findOne({orderby: _id }).populate("products.product");
         res.json(cart);
     } catch (error) {
         throw new Error(error);
     }
 });
-//8:00 (lets check postman response of getUserCart)
-module.exports = { createUser, loginUserCtrl, getallUser, getaUser,  deleteaUser, updateaUSer, blockUser, unblockUser, handleRefreshToken, logout, updatePassword, forgotPasswordToken, resetPassword, loginAdminCtrl, getWishlist, saveAddress, userCart, getUserCart };
+
+const emptyCart = asyncHandler(async(req, res) => {
+    const { _id } = req.user;
+    validateMongoDbId(_id);
+    try {
+        const user = await User.findOne({_id});
+        const cart = await Cart.findOneAndRemove({orderby: user._id})
+        res.json(cart);
+    } catch (error) {
+        throw new Error(error);
+    }
+});
+
+const applyCoupon = asyncHandler(async(req, res) => {
+    const { coupon } = req.body;
+    const { _id } = req.user;
+    const validCoupon = await Coupon.findOne({name: coupon});
+    if(validCoupon === null){
+        throw new Error('inValid Coupon');
+    }
+    const user = await User.findOne({_id});
+    let {products, cartTotal} = await Cart.findOne({orderby: user._id}).populate("products.product");
+    console.log(typeof cartTotal, 'cartTotal');
+    let totalAfterDiscount = (cartTotal - (cartTotal * validCoupon.discount) / 100).toFixed(2);
+    await Cart.findOneAndUpdate({orderby: user._id}, {totalAfterDiscount}, {ew:true});
+    res.json(totalAfterDiscount);
+});
+
+module.exports = { createUser, loginUserCtrl, getallUser, getaUser,  deleteaUser, updateaUSer, blockUser, unblockUser, handleRefreshToken, logout, updatePassword, forgotPasswordToken, resetPassword, loginAdminCtrl, getWishlist, saveAddress, userCart, getUserCart, emptyCart, applyCoupon };
