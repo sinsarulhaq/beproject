@@ -1,5 +1,5 @@
 const express = require("express");
-const { createUser, loginUserCtrl, getallUser, getaUser, deleteaUser, updateaUSer, blockUser, unblockUser, handleRefreshToken, logout, updatePassword, forgotPasswordToken, resetPassword, loginAdminCtrl, getWishlist, saveAddress, userCart, getUserCart, emptyCart, applyCoupon, createOrder, getOrders } = require("../controller/userCtrl");
+const { createUser, loginUserCtrl, getallUser, getaUser, deleteaUser, updateaUSer, blockUser, unblockUser, handleRefreshToken, logout, updatePassword, forgotPasswordToken, resetPassword, loginAdminCtrl, getWishlist, saveAddress, userCart, getUserCart, emptyCart, applyCoupon, createOrder, getOrders, updateOrderStatus } = require("../controller/userCtrl");
 const { authMiddleWare, isAdmin } = require("../middlewares/authMiddleware");
 const router = express.Router();
 
@@ -28,5 +28,6 @@ router.put("/save-address", authMiddleWare, saveAddress);
 router.put("/block-user/:id", authMiddleWare, isAdmin, blockUser);
 router.put("/unblock-user/:id", authMiddleWare, isAdmin, unblockUser);
 router.put('/password', authMiddleWare, updatePassword);
+router.put('/orders/update-order/:id', authMiddleWare, isAdmin, updateOrderStatus);
 
 module.exports = router;
